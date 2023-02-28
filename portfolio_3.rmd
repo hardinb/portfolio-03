@@ -1,0 +1,29 @@
+---
+title: "Portfolio_3"
+author: "Ben Hardin"
+date: "2023-02-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r load-data-packages}
+library(tidyverse)
+library(jsonlite)
+```
+
+```{r load-data}
+spotify <- "StreamingHistory0.JSON" %>%
+  fromJSON() %>%
+  as_tibble() %>%
+  glimpse()
+```
+
+```{r plot}
+spotify %>%
+  count(artistName) %>%
+  arrange(desc(n))
+```
