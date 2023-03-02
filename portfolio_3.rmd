@@ -83,4 +83,39 @@ ggplot(spotify_monthly, aes(x = month, y = monthly_plays, color = fct_reorder(ar
 
 ### Make it better
 
+```{r improve-plot, fig.width = 10}
+spotify_monthly <- spotify_monthly %>%
+  mutate(month_name = month.name[spotify_monthly$month])
+
+ggplot(spotify_monthly, aes(x = fct_reorder(month_name, month), y = monthly_plays, group = fct_reorder(artistName, plays, .desc = TRUE), color = fct_reorder(artistName, plays)))+
+  geom_line(lineend = "round", aes(linewidth = fct_reorder(artistName, plays)))+
+  scale_color_viridis_d()+
+  theme_bw()+
+  labs(title = "Listening Trends for Ben's top artists (2022)",
+       x = "Month",
+       y = "Plays",
+       color = "Artist",
+       linewidth = "Artist")
+```
+
+```{r even-better, fig.width = 10}
+spotify_monthly <- spotify_monthly %>%
+  mutate(month_name = month.name[spotify_monthly$month])
+
+ggplot(spotify_monthly, aes(x = fct_reorder(month_name, month), y = monthly_plays, group = fct_reorder(artistName, plays, .desc = TRUE), color = fct_reorder(artistName, plays)))+
+  geom_line(lineend = "round", 
+            aes(linewidth = fct_reorder(artistName, plays)))+
+  guides(color = guide_legend(reverse = TRUE), linewidth = guide_legend(reverse = TRUE))+
+  scale_color_viridis_d(option = "F", direction = 1)+
+  theme_classic()+
+  theme(
+    legend.position = c(.95, .95),
+    legend.justification = c("right", "top"),
+    legend.box.just = "right",
+    legend.margin = margin(6, 6, 6, 6))+
+  labs(title = "Listening Trends for Ben's top artists (2022)",
+       x = "Month",
+       y = "Plays",
+       color = "Ben's top artists",
+       linewidth = "Ben's top artists")
 ```
