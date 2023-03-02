@@ -22,8 +22,65 @@ spotify <- "StreamingHistory0.JSON" %>%
   glimpse()
 ```
 
-```{r plot}
+```{r music}
 spotify %>%
   count(artistName) %>%
   arrange(desc(n))
+
+spotify <- spotify %>%
+  filter(!artistName %in% c("Very Bad Wizards", "Unknown Artist", "Decoding the Gurus", "Taskmaster The Podcast", "Two Psychologists Four Beers", "Better Call Saul Insider Podcast", "Off Menu with Ed Gamble and James Acaster"))
+
+spotify <- spotify %>%
+  group_by(artistName) %>%
+  mutate(plays = n())
+```
+
+```{r getting-top-artists}
+spotify_top <-  spotify %>%
+  filter(plays >= 40)
+
+spotify_top %>%
+  count(artistName) %>%
+  arrange(desc(n))
+```
+
+```{r first-plot}
+ggplot(spotify_top, aes(y = artistName, x = endTime, color = artistName))+
+  geom_point(position = "jitter")+
+  theme(axis.text.y = element_blank())
+```
+
+```{r date-package}
+library(lubridate)
+```
+
+```{r reshaping}
+spotify_top$month <- month(ymd_hm(spotify_top$endTime))
+
+spotify_top <- spotify_top %>%
+  group_by(month, artistName) %>%
+  mutate(monthly_plays = n())
+
+spotify_monthly <- aggregate(monthly_plays ~ month + artistName, data = spotify_top, FUN = mean)
+```
+
+```{r better-plot}
+ggplot(spotify_monthly, aes(x = month, y = monthly_plays, color = artistName))+
+  geom_line()
+```
+
+```{r being-selective}
+spotify_top8 <-  spotify_top %>%
+  filter(plays > 80)
+
+spotify_monthly <- aggregate(monthly_plays ~ month + artistName + plays, data = spotify_top8, FUN = mean)
+```
+
+```{r base-plot}
+ggplot(spotify_monthly, aes(x = month, y = monthly_plays, color = fct_reorder(artistName, plays, .desc = TRUE)))+
+  geom_line(linewidth = 1.3)
+```
+
+### Make it better
+
 ```
