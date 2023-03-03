@@ -119,3 +119,88 @@ ggplot(spotify_monthly, aes(x = fct_reorder(month_name, month), y = monthly_play
        color = "Ben's top artists",
        linewidth = "Ben's top artists")
 ```
+
+### Mapping the geography of my music
+
+```{r starting-somewhere}
+artist_plays <- spotify %>%
+  count(artistName) %>%
+  filter(n > 19) %>%
+  filter(!artistName == "You're Wrong About")
+```
+
+[after all the making functions and writing scripts we just did]
+
+```{r joining-data}
+artist_towns <- read.csv("data/artist_towns.csv")
+origin_coords <- read.csv("data/origin_coords.csv")
+
+artist_map <- inner_join(artist_plays, artist_towns, by = "artistName")
+
+artist_map <- inner_join(artist_map, origin_coords, by = "origin") %>%
+  filter(!is.na(long))
+```
+
+```{r coordinates-function}
+dms2dec <- function(dms, separators = c("º", "°", "\'", "’", "’’", "\"", "\'\'", "\\?")) {
+  
+  # version 1.4 (2 Feb 2022)
+  # dms: a vector of latitude or longitude in degrees-minutes-seconds-hemisfere, e.g. 41° 34' 10.956" N (with or without spaces)
+  # separators: the characters that are separating degrees, minutes and seconds in 'dms'; mind these are taken in the order in which they appear and not interpreted individually, i.e. 7'3º will be taken as 7 degrees, 3 minutes! input data are assumed to be properly formatted
+  
+  dms <- as.character(dms)
+  dms <- gsub(pattern = " ", replacement = "", x = dms)
+  for (s in separators) dms <- gsub(pattern = s, replacement = "_splitHere_", x = dms)
+  
+  splits <- strsplit(dms, split = "_splitHere_")
+  n <- length(dms)
+  deg <- min <- sec <- hem <- vector("character", n)
+  
+  for (i in 1:n) {
+    deg[i] <- splits[[i]][1]
+    min[i] <- splits[[i]][2]
+    
+    if (length(splits[[i]]) < 4) {
+      hem[i] <- splits[[i]][3]
+    } else {
+      sec[i] <- splits[[i]][3]
+      hem[i] <- splits[[i]][4]
+    }
+  }
+  
+  dec <- colSums(rbind(as.numeric(deg), (as.numeric(min) / 60), (as.numeric(sec) / 3600)), na.rm = TRUE)
+  sign <- ifelse (hem %in% c("N", "E"), 1, -1)
+  hem_miss <- which(is.na(hem))
+  if (length(hem_miss) > 0) {
+    warning("Hemisphere not specified at position(s) ", hem_miss, ", so the sign of the resulting coordinates may be wrong.")
+  }
+  dec <- sign * dec
+  return(dec)
+}  # end dms2dec function
+
+```
+
+```{r cleaning-coords}
+artist_map$long.dec <- dms2dec(artist_map$long)
+
+artist_map$lat.dec <- dms2dec(artist_map$lat)
+
+#credit:https://www.r-bloggers.com/2022/02/degree-minute-second-to-decimal-coordinates/
+```
+
+```{r try-map}
+library(maps)
+
+world <- map_data("world")
+
+ggplot(artist_map, aes(x = long.dec, y = lat.dec))+
+  geom_point()+
+  geom_polygon(data = world, aes(x = long, y = lat))
+```
+
+```{r try-again}
+ggplot()+
+  geom_polygon(data = world, aes(x = long, y = lat, group = group), fill = "grey90")+
+  geom_point(data = artist_map, aes(x = long.dec, y = (lat.dec/-1), size = n, color = artistName), alpha = .7)+
+  theme_void()
+```
