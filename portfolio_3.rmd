@@ -141,8 +141,8 @@ artist_map <- inner_join(artist_map, origin_coords, by = "origin") %>%
   filter(!is.na(long))
 ```
 
-```{r coordinates-function}
-dms2dec <- function(dms, separators = c("º", "°", "\'", "’", "’’", "\"", "\'\'", "\\?")) {
+```{r coordinates-function, include=FALSE}
+dms2dec <- function(dms, separators = c("º", "°", "\'", "′", "’’", "″", "\'\'", "\\?")) {
   
   # version 1.4 (2 Feb 2022)
   # dms: a vector of latitude or longitude in degrees-minutes-seconds-hemisfere, e.g. 41° 34' 10.956" N (with or without spaces)
@@ -201,6 +201,7 @@ ggplot(artist_map, aes(x = long.dec, y = lat.dec))+
 ```{r try-again}
 ggplot()+
   geom_polygon(data = world, aes(x = long, y = lat, group = group), fill = "grey90")+
-  geom_point(data = artist_map, aes(x = long.dec, y = (lat.dec/-1), size = n, color = artistName), alpha = .7)+
-  theme_void()
+  geom_point(data = artist_map, aes(x = long.dec, y = (lat.dec), size = n), color = "skyblue3", alpha = .7)+
+  theme_void()+
+  theme(legend.position = "none")
 ```
