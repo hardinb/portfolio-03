@@ -125,8 +125,8 @@ ggplot(spotify_monthly, aes(x = fct_reorder(month_name, month), y = monthly_play
 ```{r starting-somewhere}
 artist_plays <- spotify %>%
   count(artistName) %>%
-  filter(n > 19) %>%
-  filter(!artistName == "You're Wrong About")
+  filter(n > 11) %>%
+  filter(!artistName %in% c("You're Wrong About", "My Brother, My Brother And Me"))
 ```
 
 [after all the making functions and writing scripts we just did]
@@ -201,7 +201,20 @@ ggplot(artist_map, aes(x = long.dec, y = lat.dec))+
 ```{r try-again}
 ggplot()+
   geom_polygon(data = world, aes(x = long, y = lat, group = group), fill = "grey90")+
-  geom_point(data = artist_map, aes(x = long.dec, y = (lat.dec), size = n), color = "skyblue3", alpha = .7)+
+  geom_point(data = artist_map, aes(x = long.dec, y = (lat.dec), size = n, label = artistName), color = "skyblue3", alpha = .7)+
   theme_void()+
   theme(legend.position = "none")
+```
+
+```{r interactive}
+library(plotly)
+
+music_map <- 
+ggplot()+
+  geom_polygon(data = world, aes(x = long, y = lat, group = group), fill = "grey90")+
+  geom_point(data = artist_map, aes(x = long.dec, y = (lat.dec), size = n, label = artistName), color = "skyblue3", alpha = .7)+
+  theme_void()+
+  theme(legend.position = "none")
+
+ggplotly(music_map, tooltip = "label")
 ```
