@@ -9,6 +9,11 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Intro
+
+For this portfolio piece, what I would like to do is take some data about the music I listened to in 2022, and create a nice-looking and somehow informative visual using that data.
+
+To start with, I'll need to load some packages, as well as my spotify data, which I requested from spotify and downloaded as a json file. The dataset contains all of my spotify listening data for the year 2022.
 
 ```{r load-data-packages}
 library(tidyverse)
@@ -21,6 +26,9 @@ spotify <- "StreamingHistory0.JSON" %>%
   as_tibble() %>%
   glimpse()
 ```
+### Data cleaning
+
+First, I'm only interested in music for this project, so I need to filter out podcasts from the dataset.
 
 ```{r music}
 spotify %>%
@@ -35,6 +43,10 @@ spotify <- spotify %>%
   mutate(plays = n())
 ```
 
+### Plotting trends
+
+The first thought I had was to plot listening trends over the year, which would show which artists I was most interested in at different times in the year, and how those trends waxed and waned over time. It would be quite unwieldy to do this with the whole dataset, so instead I just selected, to start with, the top 21 artists of 2022 (for me).
+
 ```{r getting-top-artists}
 spotify_top <-  spotify %>%
   filter(plays >= 40)
@@ -44,15 +56,23 @@ spotify_top %>%
   arrange(desc(n))
 ```
 
+I started by making a rainbow colored scatter plot, that doesn't really tell us anything at all, although it does, in its own way, chart the chronology of me listening to all these bands.
+
 ```{r first-plot}
 ggplot(spotify_top, aes(y = artistName, x = endTime, color = artistName))+
   geom_point(position = "jitter")+
   theme(axis.text.y = element_blank())
 ```
 
+### Acquiring dates
+
+What I'd like to do in order to get some usable dates for our purposes is to now get a usable date variable, by reshaping our dataset using the lubridate package to extract some dates for us.
+
 ```{r date-package}
 library(lubridate)
 ```
+
+What I ultimately want is a dataset that has each artist, the month of 2022, and the number of times each artist was played for a given month.
 
 ```{r reshaping}
 spotify_top$month <- month(ymd_hm(spotify_top$endTime))
@@ -64,10 +84,16 @@ spotify_top <- spotify_top %>%
 spotify_monthly <- aggregate(monthly_plays ~ month + artistName, data = spotify_top, FUN = mean)
 ```
 
+Now that I have it, let's try an initial plot! This is a decent starting place, although it is quite messy.
+
 ```{r better-plot}
 ggplot(spotify_monthly, aes(x = month, y = monthly_plays, color = artistName))+
   geom_line()
 ```
+
+### Making a good trend plot
+
+Let's see if we can improve upon our inital plot. To start with, there's maybe too much noise at the bottom from bands who aren't getting too many plays. I decided to winnow it down to just the top 7. Now, it's not completely impossible to see the trend line for each artist, and see how many listens each got month to month, as well as compare them to others.
 
 ```{r being-selective}
 spotify_top8 <-  spotify_top %>%
@@ -81,7 +107,7 @@ ggplot(spotify_monthly, aes(x = month, y = monthly_plays, color = fct_reorder(ar
   geom_line(linewidth = 1.3)
 ```
 
-### Make it better
+Let's make some more improvements. First of all, let's change the x-axis to show the month names for each month. Let's also add some helpful labels and a title. I also added a new aesthetic to further differentiate the lines and recolored them to try and make theme stand out more against eachother.
 
 ```{r improve-plot, fig.width = 10}
 spotify_monthly <- spotify_monthly %>%
@@ -97,6 +123,8 @@ ggplot(spotify_monthly, aes(x = fct_reorder(month_name, month), y = monthly_play
        color = "Artist",
        linewidth = "Artist")
 ```
+
+I wanted to make one more change, to allow out figure to be wider, by putting the legend inside the white space of the figure. I also tried out a new color scheme, which I thought might make the colors stand out against each other better, but which also makes the lines look sort of like a bunch of wriggly worms.
 
 ```{r even-better, fig.width = 10}
 spotify_monthly <- spotify_monthly %>%
@@ -120,7 +148,15 @@ ggplot(spotify_monthly, aes(x = fct_reorder(month_name, month), y = monthly_play
        linewidth = "Ben's top artists")
 ```
 
-### Mapping the geography of my music
+At this point, I was getting a bit bored with this concept, and had a different idea for a visualization that I was more excited about. Now, let's move on to that.
+
+## Mapping the geography of my music
+
+What I would like to do now is create a figure that plots the artists I listened to in 2022 against a map of the world, with each artist having a point on the graph corresponding to their hometown. I think this could be an interesting figure to look at, and would also be sort of an interesting look into where the music I heard "comes from".
+
+### Data preparation
+
+First, let's get a larger sample of artists, and exclude a couple more podcasts from the mix.
 
 ```{r starting-somewhere}
 artist_plays <- spotify %>%
@@ -129,7 +165,15 @@ artist_plays <- spotify %>%
   filter(!artistName %in% c("You're Wrong About", "My Brother, My Brother And Me"))
 ```
 
-[after all the making functions and writing scripts we just did]
+In between all these r chunks, I wrote a couple of r scripts to accomplish the webscraping needed to get the data I'm after. All the data was scraped from Wikipedia.
+
+First, I wrote a function that scrapes (a) the artist name, and (b) the "Origin" town from a given wikipedia pages infobox. Incidentally, because of the way the html nodes in these infoboxes work, it also scrapes a lot of other irrelevant information, which we'll deal with later.
+
+Second, I wrote a function that scrapes the latitude and longitude coordinates from a given location's wikipedia page.
+
+Third, I wrote a script that (i) gets the wikipedia page for all my top artists with wikipedia page, using the glue function, (ii) makes a dataframe containing artists and the wikipedia links for their hometowns (as well as a bunch of NAs and irrelevant information) using the scrape_town function, (iii) then makes a dataframe containing all of these hometowns matched to their coordinates using the scape_coords function. Because only the hometowns we scraped in step 2 have coordinate information in their wikipedia pages, they are tho only ones that produce data in step 3. Additionally, NAs and broken/non-scrapable links are filtered out in step 3, so that the code is able to run. 
+
+Now, we have 3 relevant dataframes, one with number of plays per artist, one with each artist's hometown, and one with the coordinates of each hometown. We want to join these into one so that we can plot artists on the map according the coordinates of their hometown.
 
 ```{r joining-data}
 artist_towns <- read.csv("data/artist_towns.csv")
@@ -140,6 +184,10 @@ artist_map <- inner_join(artist_plays, artist_towns, by = "artistName")
 artist_map <- inner_join(artist_map, origin_coords, by = "origin") %>%
   filter(!is.na(long))
 ```
+
+One last thing that has to happen is that the coordinates have to be converted into a usable form. They are currently expressed as degrees, but we need to convert them into decimals so that we can plot them. 
+
+Luckily, Barbosa et al. have produced a function that does just this, which I pasted below and then applied to our coordinate data!
 
 ```{r coordinates-function, include=FALSE}
 dms2dec <- function(dms, separators = c("º", "°", "\'", "′", "’’", "″", "\'\'", "\\?")) {
@@ -185,8 +233,12 @@ artist_map$long.dec <- dms2dec(artist_map$long)
 
 artist_map$lat.dec <- dms2dec(artist_map$lat)
 
-#credit:https://www.r-bloggers.com/2022/02/degree-minute-second-to-decimal-coordinates/
+#Thanks to Barbosa et al for this very useful function! credit:https://www.r-bloggers.com/2022/02/degree-minute-second-to-decimal-coordinates/
 ```
+
+### Plotting it out
+
+Now let's try and plot out data! The first time I tried it, I created this, which is not helpful, but is sort of strangely beautiful imo.
 
 ```{r try-map}
 library(maps)
@@ -198,6 +250,8 @@ ggplot(artist_map, aes(x = long.dec, y = lat.dec))+
   geom_polygon(data = world, aes(x = long, y = lat))
 ```
 
+Now, let's do it for real. It worked! I've plotted it out so that artists with more plays got larger points on the map. According to this map, it looks like most of my top artists started out in the US, with a particular stronghold in southern California and up the east coast. However, there is a reasonable amount of international content here, including some representation from Iceland, Armenia, and New Zealand.
+
 ```{r try-again}
 ggplot()+
   geom_polygon(data = world, aes(x = long, y = lat, group = group), fill = "grey90")+
@@ -205,6 +259,8 @@ ggplot()+
   theme_void()+
   theme(legend.position = "none")
 ```
+
+The last thing I wanted to do is make this plot interacting, so that one could zoom in and mouse over particular bubbles to see which artist each one represents. Looking around this some revealed that my scraping and joining method wasn't perfect, because some of the artists that should be in here are missing. But, at this stage I am satisfied and ready to move onto my next portfolio project. :)
 
 ```{r interactive}
 library(plotly)
